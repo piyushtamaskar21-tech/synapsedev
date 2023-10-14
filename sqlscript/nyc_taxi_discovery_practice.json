@@ -1,0 +1,20 @@
+{
+	"name": "nyc_taxi_discovery_practice",
+	"properties": {
+		"folder": {
+			"name": "Discovery Phase"
+		},
+		"content": {
+			"query": "\nEXEC sp_describe_first_result_set \nN'Select top 10 *\nfrom \nOPENROWSET(\n    BULK  ''abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv'',\n    FORMAT = ''csv'',\n    PARSER_VERSION = ''2.0'',\n    HEADER_ROW = TRUE\n    ) as [result]'\n\n\n\nSELECT\n    LEN(MAX(date_key)) as date_key,\n    LEN(MAX(date)) as date,\n    LEN(MAX(year)) as year,\n    LEN(MAX(month)) as month,\n    LEN(MAX(day)) as day,\n    LEN(MAX(day_name)) as day_name,\n    LEN(MAX(day_of_year)) as day_of_year,\n    LEN(MAX(week_of_month)) as week_of_month,\n    LEN(MAX(week_of_year)) as week_of_year,\n    LEN(MAX(month_name)) as month_name,\n    LEN(MAX(year_month)) as year_month,\n    LEN(MAX(year_week)) as year_week\nfrom \nOPENROWSET(\n    BULK  'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    ) as [result]\n\n\n\nSELECT\n*\nfrom \nOPENROWSET(\n    BULK  'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]\n\n\nEXEC sp_describe_first_result_set \nN'SELECT\n*\nfrom \nOPENROWSET(\n    BULK  ''abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv'',\n    FORMAT = ''csv'',\n    PARSER_VERSION = ''2.0'',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]'\n\n\nSELECT\n*\nfrom \nOPENROWSET(\n    BULK  'calendar.csv',\n    DATA_SOURCE = 'nyc_taxi_dataset_raw',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]\n\nCREATE EXTERNAL DATA SOURCE nyc_taxi_dataset_raw\nWITH (\n\n    LOCATION = 'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/'\n)",
+			"metadata": {
+				"language": "sql"
+			},
+			"currentConnection": {
+				"databaseName": "nyc_taxi_discovery",
+				"poolName": "Built-in"
+			},
+			"resultLimit": 5000
+		},
+		"type": "SqlQuery"
+	}
+}
