@@ -1,0 +1,143 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"workspaceName": {
+			"type": "string",
+			"metadata": "Workspace name",
+			"defaultValue": "dev-synapse-ws-01"
+		},
+		"dev-synapse-ws-01-WorkspaceDefaultSqlServer_connectionString": {
+			"type": "secureString",
+			"metadata": "Secure string for 'connectionString' of 'dev-synapse-ws-01-WorkspaceDefaultSqlServer'",
+			"defaultValue": "Integrated Security=False;Encrypt=True;Connection Timeout=30;Data Source=tcp:dev-synapse-ws-01.sql.azuresynapse.net,1433;Initial Catalog=@{linkedService().DBName}"
+		},
+		"dev-synapse-ws-01-WorkspaceDefaultStorage_properties_typeProperties_url": {
+			"type": "string",
+			"defaultValue": "https://devsynapseaccount01.dfs.core.windows.net"
+		}
+	},
+	"variables": {
+		"workspaceId": "[concat('Microsoft.Synapse/workspaces/', parameters('workspaceName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('workspaceName'), '/dev-synapse-ws-01-WorkspaceDefaultSqlServer')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"parameters": {
+					"DBName": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureSqlDW",
+				"typeProperties": {
+					"connectionString": "[parameters('dev-synapse-ws-01-WorkspaceDefaultSqlServer_connectionString')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/dev-synapse-ws-01-WorkspaceDefaultStorage')]",
+			"type": "Microsoft.Synapse/workspaces/linkedServices",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"annotations": [],
+				"type": "AzureBlobFS",
+				"typeProperties": {
+					"url": "[parameters('dev-synapse-ws-01-WorkspaceDefaultStorage_properties_typeProperties_url')]"
+				},
+				"connectVia": {
+					"referenceName": "AutoResolveIntegrationRuntime",
+					"type": "IntegrationRuntimeReference"
+				}
+			},
+			"dependsOn": [
+				"[concat(variables('workspaceId'), '/integrationRuntimes/AutoResolveIntegrationRuntime')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/AutoResolveIntegrationRuntime')]",
+			"type": "Microsoft.Synapse/workspaces/integrationRuntimes",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "Managed",
+				"typeProperties": {
+					"computeProperties": {
+						"location": "AutoResolve",
+						"dataFlowProperties": {
+							"computeType": "General",
+							"coreCount": 8,
+							"timeToLive": 0
+						}
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/WorkspaceSystemIdentity')]",
+			"type": "Microsoft.Synapse/workspaces/credentials",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"type": "ManagedIdentity",
+				"typeProperties": {}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/DiscoverySQL')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"folder": {
+					"name": "Discovery Phase"
+				},
+				"content": {
+					"query": "-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'https://devsynapseaccount01.dfs.core.windows.net/nyc-taxi-dataset/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n\n\n-- use it the format of abfss\n\n-- This is auto-generated code\nSELECT\n    TOP 100 *\nFROM\n    OPENROWSET(\n        BULK 'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/taxi_zone.csv',\n        FORMAT = 'CSV',\n        PARSER_VERSION = '2.0',\n        HEADER_ROW = TRUE\n    ) AS [result]\n",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "master",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('workspaceName'), '/nyc_taxi_discovery_practice')]",
+			"type": "Microsoft.Synapse/workspaces/sqlscripts",
+			"apiVersion": "2019-06-01-preview",
+			"properties": {
+				"folder": {
+					"name": "Discovery Phase"
+				},
+				"content": {
+					"query": "\nEXEC sp_describe_first_result_set \nN'Select top 10 *\nfrom \nOPENROWSET(\n    BULK  ''abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv'',\n    FORMAT = ''csv'',\n    PARSER_VERSION = ''2.0'',\n    HEADER_ROW = TRUE\n    ) as [result]'\n\n\n\nSELECT\n    LEN(MAX(date_key)) as date_key,\n    LEN(MAX(date)) as date,\n    LEN(MAX(year)) as year,\n    LEN(MAX(month)) as month,\n    LEN(MAX(day)) as day,\n    LEN(MAX(day_name)) as day_name,\n    LEN(MAX(day_of_year)) as day_of_year,\n    LEN(MAX(week_of_month)) as week_of_month,\n    LEN(MAX(week_of_year)) as week_of_year,\n    LEN(MAX(month_name)) as month_name,\n    LEN(MAX(year_month)) as year_month,\n    LEN(MAX(year_week)) as year_week\nfrom \nOPENROWSET(\n    BULK  'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    ) as [result]\n\n\n\nSELECT\n*\nfrom \nOPENROWSET(\n    BULK  'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]\n\n\nEXEC sp_describe_first_result_set \nN'SELECT\n*\nfrom \nOPENROWSET(\n    BULK  ''abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/calendar.csv'',\n    FORMAT = ''csv'',\n    PARSER_VERSION = ''2.0'',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]'\n\n\nSELECT\n*\nfrom \nOPENROWSET(\n    BULK  'calendar.csv',\n    DATA_SOURCE = 'nyc_taxi_dataset_raw',\n    FORMAT = 'csv',\n    PARSER_VERSION = '2.0',\n    HEADER_ROW = TRUE\n    )\n    WITH\n    (\n        date_key INT,\n        date date,\n        year smallint,\n        month smallint,\n        day smallint,\n        day_name varchar(15),\n        day_of_year smallint,\n        week_of_month smallint,\n        week_of_year smallint,\n        month_name VARCHAR(15)\n    )\n     as [result]\n\nCREATE EXTERNAL DATA SOURCE nyc_taxi_dataset_raw\nWITH (\n\n    LOCATION = 'abfss://nyc-taxi-dataset@devsynapseaccount01.dfs.core.windows.net/raw/'\n)",
+					"metadata": {
+						"language": "sql"
+					},
+					"currentConnection": {
+						"databaseName": "nyc_taxi_discovery",
+						"poolName": "Built-in"
+					},
+					"resultLimit": 5000
+				},
+				"type": "SqlQuery"
+			},
+			"dependsOn": []
+		}
+	]
+}
